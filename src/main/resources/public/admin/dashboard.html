@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seabaas — Admin</title>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.15.12/dist/cdn.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: Geist, Inter, Arial, sans-serif;
+    font-size: 14px; font-weight: 400; line-height: 20px;
+    background: #fafafa; color: #171717;
+    display: flex;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 220px; flex-shrink: 0;
+    background: #1a1a1a; color: #a1a1a1;
+    display: flex; flex-direction: column;
+    padding: 16px 0; height: 100vh; overflow-y: auto;
+  }
+  .sidebar-logo {
+    font-size: 16px; font-weight: 600; color: #fff;
+    padding: 8px 20px 20px;
+    letter-spacing: -0.32px;
+  }
+  .sidebar-collections {
+    flex: 1; overflow-y: auto;
+    padding: 0 8px;
+  }
+  .sidebar-section-title {
+    font-family: Geist Mono, ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; font-weight: 500; text-transform: uppercase;
+    color: #5a5a5a; padding: 8px 12px 4px;
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 12px; margin: 1px 0;
+    border-radius: 6px; cursor: pointer;
+    font-size: 14px; font-weight: 500; color: #9a9a9a;
+    transition: background 0.1s, color 0.1s;
+    border: none; background: none; width: 100%; text-align: left;
+    font-family: inherit;
+  }
+  .sidebar-item:hover { background: #2a2a2a; color: #ccc; }
+  .sidebar-item.active { background: #333; color: #fff; }
+  .sidebar-item .icon { font-size: 16px; flex-shrink: 0; width: 20px; text-align: center; }
+  .sidebar-item .badge {
+    margin-left: auto; font-size: 11px; color: #5a5a5a;
+    font-family: Geist Mono, ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .sidebar-footer {
+    border-top: 1px solid #2a2a2a; padding: 12px 20px 0; margin-top: 8px;
+  }
+
+  /* ── Main ── */
+  .main {
+    flex: 1; overflow-y: auto; height: 100vh;
+    display: flex; flex-direction: column;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: #fafafa;
+    border-bottom: 1px solid #ebebeb;
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0;
+  }
+  .topbar h2 {
+    font-size: 20px; font-weight: 600; letter-spacing: -0.4px; line-height: 28px;
+    flex: 1;
+  }
+  .topbar button {
+    background: #171717; color: #fff; border: none; border-radius: 6px;
+    font-family: Geist, Inter, Arial, sans-serif;
+    font-size: 14px; font-weight: 500; line-height: 20px;
+    padding: 6px 12px; cursor: pointer; transition: opacity 0.15s;
+  }
+  .topbar button:hover { opacity: 0.85; }
+  .topbar button.ghost {
+    background: #fff; color: #171717; border: 1px solid #ebebeb;
+  }
+  .topbar .breadcrumb {
+    font-family: Geist Mono, ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px; font-weight: 500; text-transform: uppercase;
+    color: #8f8f8f; cursor: pointer; background: none; border: none;
+  }
+  .topbar .breadcrumb:hover { color: #171717; }
+
+  /* ── Content ── */
+  .content { padding: 24px; flex: 1; overflow-y: auto; }
+  .content h3 {
+    font-size: 20px; font-weight: 600; letter-spacing: -0.4px; line-height: 28px;
+    margin-bottom: 16px;
+  }
+
+  /* ── Cards grid ── */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .collection-card {
+    background: #fff;
+    border: 1px solid #ebebeb;
+    border-radius: 12px; padding: 20px;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .collection-card:hover {
+    border-color: #d4d4d4;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .collection-card-name {
+    font-size: 16px; font-weight: 600; letter-spacing: -0.32px; line-height: 24px;
+    margin-bottom: 8px;
+  }
+  .collection-card-type {
+    font-family: Geist Mono, ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; font-weight: 500; text-transform: uppercase;
+    color: #8f8f8f; margin-bottom: 12px;
+  }
+  .collection-card-fields {
+    display: flex; flex-wrap: wrap; gap: 4px;
+  }
+  .field-pill {
+    font-family: Geist Mono, ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; font-weight: 500;
+    background: #f5f5f5; color: #4d4d4d;
+    padding: 2px 8px; border-radius: 4px;
+    border: 1px solid #ebebeb;
+  }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-family: Geist Mono, ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px; font-weight: 500; text-transform: uppercase;
+    color: #8f8f8f; text-align: left;
+    padding: 10px 12px;
+    background: #fafafa; border-bottom: 1px solid #ebebeb;
+    position: sticky; top: 0; z-index: 1;
+  }
+  td {
+    font-size: 14px; font-weight: 400; line-height: 20px; color: #4d4d4d;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f2f2f2;
+  }
+  tr:hover td { background: #fafafa; }
+
+  /* ── Inputs ── */
+  input, select {
+    background: #fff; color: #171717;
+    border: 1px solid #ebebeb; border-radius: 6px;
+    font-family: Geist, Inter, Arial, sans-serif;
+    font-size: 14px; font-weight: 400; line-height: 20px;
+    padding: 8px 12px; outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus { border-color: #0070f3; }
+  input::placeholder { color: #a1a1a1; }
+
+  /* ── Field Row Controls ── */
+  .field-control {
+    height: 36px;
+    background: #fff; color: #171717;
+    border: 1px solid #ebebeb; border-radius: 6px;
+    font-family: Geist, Inter, Arial, sans-serif;
+    font-size: 14px; font-weight: 400; line-height: 20px;
+    padding: 8px 12px; outline: none; box-sizing: border-box;
+    transition: border-color 0.15s;
+  }
+  .field-control:focus { border-color: #0070f3; }
+  select.field-control {
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a9a9a' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 32px; cursor: pointer;
+  }
+  .field-toggle {
+    width: 36px; height: 36px; flex-shrink: 0;
+    border: 1px solid #ebebeb; border-radius: 6px;
+    background: #fff; cursor: pointer; padding: 0;
+    transition: all 0.15s;
+  }
+  .field-toggle.on { background: #171717; border-color: #171717; }
+  .field-remove {
+    width: 36px; height: 36px; flex-shrink: 0;
+    background: none; border: none; color: #a1a1a1;
+    cursor: pointer; font-size: 18px; line-height: 36px;
+    padding: 0; text-align: center; transition: color 0.15s;
+  }
+  .field-remove:hover { color: #ee0000; }
+
+  /* ── Modal backdrop ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+    display: flex; justify-content: center; align-items: flex-start;
+    padding-top: 10vh; z-index: 50;
+  }
+  .modal {
+    background: #fff; border: 1px solid #ebebeb; border-radius: 12px;
+    padding: 24px; width: 100%; max-width: 640px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  }
+  .modal h3 { margin-bottom: 16px; }
+
+  /* ── Misc ── */
+  .field-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .field-row input, .field-row select { flex: 1; margin-bottom: 0; }
+  .msg { font-size: 14px; line-height: 20px; margin-top: 8px; }
+  .msg--error { color: #ee0000; }
+  .msg--success { color: #0070f3; }
+  .empty {
+    font-family: Geist Mono, ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px; font-weight: 500; text-transform: uppercase;
+    color: #a1a1a1; text-align: center; padding: 48px 0;
+  }
+  .mt-0 { margin-top: 0; }
+  .mb-8 { margin-bottom: 8px; }
+  .mb-16 { margin-bottom: 16px; }
+  .w-full { width: 100%; }
+  .flex-gap-12 { display: flex; gap: 12px; }
+</style>
+</head>
+<body x-data="dashboard()" x-init="checkAuth()">
+
+<!-- ── Sidebar ── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">Seabaas</div>
+
+  <div class="sidebar-section-title">Collections</div>
+  <div class="sidebar-collections">
+    <button class="sidebar-item" :class="{ active: view === 'records' && selectedCol === 'users' }"
+            @click="openSystemCollection('users')">
+      <span class="icon" style="color:#f5a623">&#9679;</span>
+      <span>users</span>
+    </button>
+    <button class="sidebar-item" :class="{ active: view === 'records' && selectedCol === 'superusers' }"
+            @click="openSystemCollection('superusers')">
+      <span class="icon" style="color:#f5a623">&#9679;</span>
+      <span>superusers</span>
+    </button>
+    <template x-for="col in collections" :key="col.id">
+      <button class="sidebar-item" :class="{ active: view === 'records' && selectedCol === col.name }"
+              @click="openCollection(col.name)">
+        <span class="icon" style="color:#d4d4d4">&#9702;</span>
+        <span x-text="col.name"></span>
+      </button>
+    </template>
+  </div>
+
+  <div class="sidebar-footer">
+    <button class="sidebar-item" @click="logout" style="color:#8f8f8f">
+      <span class="icon">&#8592;</span>
+      <span>Log out</span>
+    </button>
+  </div>
+</aside>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- ── Collections View ── -->
+  <template x-if="view === 'collections'">
+    <div>
+      <div class="topbar">
+        <h2>Collections</h2>
+        <button @click="showNewCol = true">+ New Collection</button>
+      </div>
+      <div class="content">
+
+        <!-- System section -->
+        <div class="cards-grid mb-16">
+          <div class="collection-card" @click="openSystemCollection('users')" style="border-color:#f5a62330">
+            <div class="collection-card-name">users</div>
+            <div class="collection-card-type" style="color:#f5a623">SYSTEM</div>
+            <div class="collection-card-fields">
+              <span class="field-pill">id</span>
+              <span class="field-pill">name</span>
+              <span class="field-pill">email</span>
+              <span class="field-pill">created_at</span>
+            </div>
+          </div>
+          <div class="collection-card" @click="openSystemCollection('superusers')" style="border-color:#f5a62330">
+            <div class="collection-card-name">superusers</div>
+            <div class="collection-card-type" style="color:#f5a623">SYSTEM</div>
+            <div class="collection-card-fields">
+              <span class="field-pill">id</span>
+              <span class="field-pill">name</span>
+              <span class="field-pill">email</span>
+              <span class="field-pill">created_at</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:1px;background:#ebebeb;margin:8px 0 24px"></div>
+
+        <div class="cards-grid" x-show="collections.length">
+          <template x-for="col in collections" :key="col.id">
+            <div class="collection-card" @click="openCollection(col.name)">
+              <div class="collection-card-name" x-text="col.name"></div>
+              <div class="collection-card-type">BASE</div>
+              <div class="collection-card-fields">
+                <template x-for="field in parseSchema(col.json_schema)" :key="field.name">
+                  <span class="field-pill" x-text="field.name"></span>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+        <div class="empty" x-show="!collections.length">No collections yet</div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ── Records View ── -->
+  <template x-if="view === 'records'">
+    <div>
+      <div class="topbar">
+        <button class="breadcrumb" @click="view = 'collections'">Collections</button>
+        <span style="color:#d4d4d4">/</span>
+        <h2 x-text="selectedCol"></h2>
+        <button @click="showNewRec = true" x-show="!isSystem">+ New Record</button>
+      </div>
+      <div class="content">
+        <div x-show="recLoading" class="empty">Loading…</div>
+        <div x-show="!recLoading">
+          <div class="table-wrap" x-show="records.length">
+            <table>
+              <thead>
+                <tr>
+                  <template x-for="col in columns" :key="col">
+                    <th x-text="col"></th>
+                  </template>
+                  <th x-show="!isSystem" style="width:40px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="row in records" :key="row.id">
+                  <tr style="cursor:pointer" @click="openRecord(row)">
+                    <template x-for="col in columns" :key="col">
+                      <td x-text="row[col]"></td>
+                    </template>
+                    <td x-show="!isSystem" @click.stop style="text-align:center">
+                      <button @click="promptDelete(row.id)"
+                              style="background:none;border:none;color:#a1a1a1;cursor:pointer;padding:2px 6px;border-radius:4px;transition:color 0.15s"
+                              class="trash-btn"
+                              :title="'Delete record ' + row.id">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                      </button>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <div class="empty" x-show="!records.length">No records</div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+</div>
+
+<!-- ── New Collection Modal ── -->
+<div class="modal-overlay" x-show="showNewCol" @click.self="showNewCol = false">
+  <div class="modal">
+    <h3>New Collection</h3>
+    <form @submit.prevent="createCollection">
+      <input type="text" x-model="newCol.name" placeholder="Collection name" required class="w-full mb-16">
+
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <div style="flex:1">
+          <div style="font-family:Geist Mono,ui-monospace;font-size:12px;font-weight:500;text-transform:uppercase;color:#8f8f8f;margin-bottom:4px">Read Rule</div>
+          <select x-model="newCol.readRule" class="field-control" style="width:100%">
+            <option value="ALL">ALL</option>
+            <option value="USER">USER</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          <div style="font-family:Geist Mono,ui-monospace;font-size:12px;font-weight:500;text-transform:uppercase;color:#8f8f8f;margin-bottom:4px">Update Rule</div>
+          <select x-model="newCol.updateRule" class="field-control" style="width:100%">
+            <option value="ALL">ALL</option>
+            <option value="USER">USER</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-row" style="color:#8f8f8f;font-size:12px;font-family:Geist Mono,ui-monospace;text-transform:uppercase;margin-bottom:8px">
+        <span style="flex:1">Name</span><span style="flex:1">Type</span><span style="width:36px">REQ</span><span style="width:36px"></span>
+      </div>
+      <template x-for="(field, idx) in newCol.fields" :key="idx">
+        <div class="field-row">
+          <input type="text" x-model="field.name" placeholder="field_name" required class="field-control" style="flex:1;min-width:0">
+          <select x-model="field.type" required class="field-control" style="flex:1;min-width:0">
+            <option value="TEXT">text</option>
+            <option value="NUMBER">number</option>
+            <option value="BOOLEAN">boolean</option>
+            <option value="EMAIL">email</option>
+            <option value="URL">url</option>
+            <option value="DATETIME">datetime</option>
+            <option value="JSON">json</option>
+          </select>
+          <button type="button" class="field-toggle" :class="{ on: field.required }"
+                  @click="field.required = !field.required"
+                  :title="field.required ? 'Required' : 'Optional'"></button>
+          <button type="button" class="field-remove"
+                  @click="newCol.fields.splice(idx,1)">&times;</button>
+        </div>
+      </template>
+      <button type="button" @click="newCol.fields.push({name:'',type:'TEXT',required:false})"
+              style="background:none;border:none;color:#8f8f8f;cursor:pointer;font-size:13px;margin-bottom:16px;font-family:inherit">+ Add field</button>
+      <div class="msg msg--error" x-show="colError" x-text="colError"></div>
+      <div class="msg msg--success" x-show="colSuccess" x-text="colSuccess"></div>
+      <div class="flex-gap-12">
+        <button type="button" class="ghost" @click="showNewCol = false"
+                style="background:#fff;color:#171717;border:1px solid #ebebeb;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1">Cancel</button>
+        <button type="submit"
+                style="background:#171717;color:#fff;border:none;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1"
+                :disabled="colLoading">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── New Record Modal ── -->
+<div class="modal-overlay" x-show="showNewRec" @click.self=" showNewRec = false">
+  <div class="modal">
+    <h3>New Record — <span x-text="selectedCol"></span></h3>
+    <form @submit.prevent="createRecord">
+      <template x-for="field in selectedSchema" :key="field.name">
+        <div style="margin-bottom:12px">
+          <label x-text="field.name"
+                 style="display:block;font-family:Geist Mono,ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:500;text-transform:uppercase;color:#8f8f8f;margin-bottom:4px"></label>
+          <input type="text" :id="'fld-'+field.name" :placeholder="field.name" :required="field.required" class="w-full"
+                 @input="newRec[field.name] = $event.target.value">
+        </div>
+      </template>
+      <div class="msg msg--error" x-show="recError" x-text="recError"></div>
+      <div class="flex-gap-12">
+        <button type="button" @click="showNewRec = false"
+                style="background:#fff;color:#171717;border:1px solid #ebebeb;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1">Cancel</button>
+        <button type="submit"
+                style="background:#171717;color:#fff;border:none;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1"
+                :disabled="recCreating">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Delete Record Modal ── -->
+<div class="modal-overlay" x-show="showDeleteModal" @click.self="showDeleteModal = null">
+  <div class="modal" style="max-width:400px">
+    <h3>Delete Record</h3>
+    <p style="font-size:14px;color:#4d4d4d;margin-bottom:16px">
+      Are you sure you want to delete this record? This action cannot be undone.
+    </p>
+    <div class="flex-gap-12">
+      <button type="button" @click="showDeleteModal = null"
+              style="background:#fff;color:#171717;border:1px solid #ebebeb;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1">Cancel</button>
+      <button type="button" @click="deleteRecord(showDeleteModal, true)"
+              style="background:#ee0000;color:#fff;border:none;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1"
+              :disabled="deleting">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function dashboard() {
+  const token = () => localStorage.getItem("seabaas_token");
+  const api = (url, opts = {}) => fetch(url, {
+    ...opts,
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token(), ...opts.headers },
+  }).then(r => r.json());
+
+  return {
+    authed: false,
+    view: "collections",
+    collections: [],
+    selectedCol: "",
+    selectedSchema: [],
+    records: [], columns: [], recLoading: false,
+
+    /* collections view */
+    showNewCol: false,
+    newCol: { name: "", fields: [{ name: "", type: "TEXT", required: false }], readRule: "ALL", updateRule: "ALL" },
+    colLoading: false, colError: "", colSuccess: "",
+
+    /* records view */
+    isSystem: false,
+    showNewRec: false,
+    newRec: {},
+    recCreating: false, recError: "",
+    deleting: null,
+    showDeleteModal: null,
+
+    checkAuth() {
+      if (!token()) { window.location.href = "/admin/login.html"; return; }
+      this.authed = true;
+      this.loadCollections();
+    },
+
+    logout() { localStorage.removeItem("seabaas_token"); window.location.href = "/admin/login.html"; },
+
+    parseSchema(json) {
+      try { return JSON.parse(json); } catch (e) { return []; }
+    },
+
+    async loadCollections() {
+      const res = await api("/collections");
+      if (res.status === "success") this.collections = res.data || [];
+      else if (res.title) { this.authed = false; this.logout(); }
+    },
+
+    sortColumns(cols) {
+      const idx = cols.indexOf("id");
+      if (idx > 0) { cols.splice(idx, 1); cols.unshift("id"); }
+      return cols;
+    },
+
+    async openSystemCollection(name) {
+      this.view = "records";
+      this.selectedCol = name;
+      this.isSystem = true;
+      this.selectedSchema = [
+        { name: "email", type: "EMAIL", required: true },
+        { name: "name", type: "TEXT", required: false },
+        { name: "password", type: "TEXT", required: false },
+      ];
+      this.recLoading = true;
+      this.records = []; this.columns = [];
+      try {
+        const recRes = await api("/collections/" + name + "/records?limit=100");
+        if (recRes.status === "success" && recRes.data.length) {
+          this.columns = this.sortColumns(Object.keys(recRes.data[0]));
+          this.records = recRes.data;
+        }
+      } catch (e) { /* ignore */ }
+      this.recLoading = false;
+    },
+
+    async openCollection(name) {
+      this.view = "records";
+      this.selectedCol = name;
+      this.isSystem = false;
+      this.recLoading = true;
+      this.records = []; this.columns = [];
+      try {
+        const schemaRes = await api("/collections/" + name + "/schema");
+        if (schemaRes.status === "success" && schemaRes.data) {
+          this.selectedSchema = this.parseSchema(schemaRes.data.json_schema);
+        }
+        const recRes = await api("/collections/" + name + "/records?limit=100");
+        if (recRes.status === "success" && recRes.data.length) {
+          this.columns = this.sortColumns(Object.keys(recRes.data[0]));
+          this.records = recRes.data;
+        }
+      } catch (e) { /* ignore */ }
+      this.recLoading = false;
+    },
+
+    openRecord(row) {
+      console.log("Record:", row);
+    },
+
+    async createCollection() {
+      this.colLoading = true; this.colError = ""; this.colSuccess = "";
+      try {
+        const res = await api("/collections", {
+          method: "POST",
+          body: JSON.stringify({ name: this.newCol.name, fields: this.newCol.fields.filter(f => f.name), readRule: this.newCol.readRule, updateRule: this.newCol.updateRule }),
+        });
+        if (res.status === "success") {
+          this.colSuccess = "Collection created";
+          this.showNewCol = false;
+          this.newCol = { name: "", fields: [{ name: "", type: "TEXT", required: false }], readRule: "ALL", updateRule: "ALL" };
+          await this.loadCollections();
+        } else {
+          this.colError = res.message || "Failed";
+        }
+      } catch (e) { this.colError = "Network error"; }
+      this.colLoading = false;
+    },
+
+    promptDelete(id) {
+      this.showDeleteModal = id;
+    },
+
+    async deleteRecord(id, confirmed) {
+      if (!confirmed) return;
+      this.showDeleteModal = null;
+      this.deleting = id;
+      try {
+        await api("/collections/" + this.selectedCol + "/records?filter:id== '" + id +"'", { method: "DELETE" });
+        this.records = this.records.filter(r => r.id !== id);
+      } catch (e) { /* ignore */ }
+      this.deleting = null;
+    },
+
+    async createRecord() {
+      this.recCreating = true; this.recError = "";
+      try {
+        const res = await api("/collections/" + this.selectedCol + "/records", {
+          method: "POST",
+          body: JSON.stringify({ name: this.selectedCol, data: this.newRec }),
+        });
+        if (res.status === "success") {
+          this.showNewRec = false;
+          this.newRec = {};
+          this.openCollection(this.selectedCol);
+        } else {
+          this.recError = res.message || "Failed";
+        }
+      } catch (e) { this.recError = "Network error"; }
+      this.recCreating = false;
+    },
+  };
+}
+</script>
+</body>
+</html>
