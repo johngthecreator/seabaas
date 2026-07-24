@@ -3,6 +3,7 @@ package com.seabaas;
 import com.seabaas.auth.JwtUtils;
 import com.seabaas.auth.Role;
 import com.seabaas.controllers.AuthController;
+import com.seabaas.controllers.CollectionController;
 import com.seabaas.db.Database;
 import com.seabaas.factories.AuthFactory;
 import com.seabaas.factories.CollectionFactory;
@@ -24,8 +25,8 @@ public class SeabaasBackendMain {
         jdbi.withHandle(handle ->
             handle.createScript("""
                     CREATE TABLE IF NOT EXISTS collections ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT DEFAULT '', json_schema TEXT DEFAULT '{}', read_rule TEXT DEFAULT 'ALL', update_rule TEXT DEFAULT 'ALL'); 
-                    CREATE TABLE IF NOT EXISTS users ( id TEXT PRIMARY KEY, name TEXT DEFAULT '', email TEXT DEFAULT '', password TEXT DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-                    CREATE TABLE IF NOT EXISTS superusers ( id TEXT PRIMARY KEY, name TEXT DEFAULT '', email TEXT DEFAULT '', password TEXT DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+                    CREATE TABLE IF NOT EXISTS users ( id TEXT PRIMARY KEY, name TEXT DEFAULT '', email TEXT UNIQUE DEFAULT '', password TEXT DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+                    CREATE TABLE IF NOT EXISTS superusers ( id TEXT PRIMARY KEY, name TEXT DEFAULT '', email TEXT UNIQUE DEFAULT '', password TEXT DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP);
                     """
             ).execute()
         );

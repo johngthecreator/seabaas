@@ -1,4 +1,4 @@
 package com.seabaas.dtos;
 
-public record LoginDto(String email, String password) {
+public record LoginDTO(String email, String password) {
 }

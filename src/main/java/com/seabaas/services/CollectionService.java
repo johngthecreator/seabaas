@@ -1,9 +1,9 @@
 package com.seabaas.services;
 
 import com.seabaas.auth.Role;
-import com.seabaas.dtos.CollectionDto;
-import com.seabaas.dtos.CollectionInsertDto;
-import com.seabaas.dtos.RecordUpdateDto;
+import com.seabaas.dtos.CreateCollectionDTO;
+import com.seabaas.dtos.InsertRecordDTO;
+import com.seabaas.dtos.UpdateRecordDTO;
 import com.seabaas.models.CollectionModel;
 import com.seabaas.repositories.CollectionRepository;
 
@@ -15,48 +15,48 @@ import java.util.Set;
 public class CollectionService {
     private final CollectionRepository collectionRepository;
 
-    public CollectionService(CollectionRepository collectionRepository){
+    public CollectionService(CollectionRepository collectionRepository) {
         this.collectionRepository = collectionRepository;
     }
 
-    public Integer create(CollectionDto collection){
-        var exists = this.collectionRepository.findByName(collection.name());
-        if(exists != 0){ return -100; }
-        this.collectionRepository.createTable(collection);
-        return this.collectionRepository.save(collection);
-    };
-
-    public String insertRecord(CollectionInsertDto collectionInsertData, String userId){
-        return this.collectionRepository.insertRecord(collectionInsertData, userId);
+    public Integer create(CreateCollectionDTO collection) {
+        if (collectionRepository.collectionExists(collection.name())) {
+            return -100;
+        }
+        collectionRepository.createTable(collection);
+        return collectionRepository.saveCollection(collection);
     }
 
-    public void updateRecord(RecordUpdateDto recordUpdateData, String userId, Set<Role> roles){
-        var col = this.collectionRepository.findSchemaByName(recordUpdateData.name());
+    public String insertRecord(InsertRecordDTO dto, String userId) {
+        return collectionRepository.insertRecord(dto, userId);
+    }
+
+    public void updateRecords(UpdateRecordDTO dto, String userId, Set<Role> roles) {
+        var col = collectionRepository.findCollectionSchema(dto.name());
         String updateRule = col.map(CollectionModel::getUpdate_rule).orElse("ALL");
         boolean isAdmin = roles.contains(Role.ADMIN);
-        this.collectionRepository.updateRecord(recordUpdateData, updateRule, userId, isAdmin);
+        collectionRepository.updateRecords(dto, updateRule, userId, isAdmin);
     }
 
-    public Integer deleteRecord(String collectionName, Map<String, List<String>> queryParams, String userId, Set<Role> roles){
-        var col = this.collectionRepository.findSchemaByName(collectionName);
+    public int deleteRecords(String collectionName, Map<String, List<String>> queryParams, String userId, Set<Role> roles) {
+        var col = collectionRepository.findCollectionSchema(collectionName);
         String updateRule = col.map(CollectionModel::getUpdate_rule).orElse("ALL");
         boolean isAdmin = roles.contains(Role.ADMIN);
-        return this.collectionRepository.deleteRecord(collectionName, queryParams, updateRule, userId, isAdmin);
+        return collectionRepository.deleteRecords(collectionName, queryParams, updateRule, userId, isAdmin);
     }
 
-    public List<Map<String, Object>> findRecords(String collectionName, Map<String, List<String>> queryParams, String userId, Set<Role> roles){
-        var col = this.collectionRepository.findSchemaByName(collectionName);
+    public List<Map<String, Object>> findRecords(String collectionName, Map<String, List<String>> queryParams, String userId, Set<Role> roles) {
+        var col = collectionRepository.findCollectionSchema(collectionName);
         String readRule = col.map(CollectionModel::getRead_rule).orElse("ALL");
         boolean isAdmin = roles.contains(Role.ADMIN);
-        return this.collectionRepository.findRecords(collectionName, queryParams, readRule, userId, isAdmin);
+        return collectionRepository.findRecords(collectionName, queryParams, readRule, userId, isAdmin);
     }
 
     public List<CollectionModel> listAll() {
-        return this.collectionRepository.findAll();
+        return collectionRepository.findAllCollections();
     }
 
     public Optional<CollectionModel> getSchema(String name) {
-        return this.collectionRepository.findSchemaByName(name);
+        return collectionRepository.findCollectionSchema(name);
     }
-
 }
