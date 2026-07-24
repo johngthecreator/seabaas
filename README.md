@@ -80,6 +80,14 @@ All endpoints use a consistent JSON shape:
 
 ## Running
 
+Requires `JWT_SECRET` in your environment:
+
+```bash
+export JWT_SECRET="your-secret-key"
+```
+
+Then start the server:
+
 ```bash
 ./mvnw compile exec:java -Dexec.mainClass="com.seabaas.SeabaasBackendMain"
 ```
@@ -126,15 +134,6 @@ Response:
 ```json
 { "status": "success" }
 ```
-
-## TODO
-
-- [ ] Add superuser delete endpoint
-- [ ] Add user delete endpoint
-- [ ] Add collection delete endpoint
-- [ ] Add collection update (schema migration) endpoint
-- [ ] Package as a standalone binary (fat JAR / native image)
-- [ ] Make extensible via plugin/extension system
 
 ### Login
 
@@ -327,3 +326,12 @@ Response:
 ```json
 { "status": "success" }
 ```
+
+## TODO
+
+- [ ] Add superuser delete endpoint
+- [ ] Add user delete endpoint
+- [ ] Add collection delete endpoint
+- [ ] Add collection update (schema migration) endpoint
+- [ ] Package as a standalone binary (fat JAR / native image)
+- [ ] Make extensible via plugin/extension system

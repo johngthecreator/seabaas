@@ -61,8 +61,12 @@ public class CollectionController {
         try {
             var auth = extractAuth(ctx);
             var dto = ctx.bodyValidator(UpdateRecordDTO.class).get();
-            this.collectionService.updateRecords(dto, auth.userId(), auth.roles());
-            ctx.status(200).json(Map.of("status", "success"));
+            int updated = this.collectionService.updateRecords(dto, auth.userId(), auth.roles());
+            if (updated == 0) {
+                ctx.status(404).json(Map.of("status", "error", "message", "No matching records found"));
+            } else {
+                ctx.status(200).json(Map.of("status", "success", "data", Map.of("updated", updated)));
+            }
         } catch (Exception e) {
             ctx.status(500).json(Map.of("status", "error", "message", "Internal server error"));
         }

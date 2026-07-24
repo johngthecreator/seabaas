@@ -31,11 +31,11 @@ public class CollectionService {
         return collectionRepository.insertRecord(dto, userId);
     }
 
-    public void updateRecords(UpdateRecordDTO dto, String userId, Set<Role> roles) {
+    public int updateRecords(UpdateRecordDTO dto, String userId, Set<Role> roles) {
         var col = collectionRepository.findCollectionSchema(dto.name());
         String updateRule = col.map(CollectionModel::getUpdate_rule).orElse("ALL");
         boolean isAdmin = roles.contains(Role.ADMIN);
-        collectionRepository.updateRecords(dto, updateRule, userId, isAdmin);
+        return collectionRepository.updateRecords(dto, updateRule, userId, isAdmin);
     }
 
     public int deleteRecords(String collectionName, Map<String, List<String>> queryParams, String userId, Set<Role> roles) {

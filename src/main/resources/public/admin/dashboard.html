@@ -82,7 +82,9 @@
     font-family: Geist, Inter, Arial, sans-serif;
     font-size: 14px; font-weight: 500; line-height: 20px;
     padding: 6px 12px; cursor: pointer; transition: opacity 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
   }
+  .topbar button svg { flex-shrink: 0; }
   .topbar button:hover { opacity: 0.85; }
   .topbar button.ghost {
     background: #fff; color: #171717; border: 1px solid #ebebeb;
@@ -275,7 +277,13 @@
     <div>
       <div class="topbar">
         <h2>Collections</h2>
-        <button @click="showNewCol = true">+ New Collection</button>
+        <div style="display:flex;gap:6px">
+          <button class="ghost" @click="loadCollections" title="Refresh">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Refresh
+          </button>
+          <button @click="showNewCol = true">+ New Collection</button>
+        </div>
       </div>
       <div class="content">
 
@@ -330,7 +338,13 @@
         <button class="breadcrumb" @click="view = 'collections'">Collections</button>
         <span style="color:#d4d4d4">/</span>
         <h2 x-text="selectedCol"></h2>
-        <button @click="showNewRec = true" x-show="!isSystem">+ New Record</button>
+        <div style="display:flex;gap:6px">
+          <button class="ghost" @click="refreshRecords" title="Refresh">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Refresh
+          </button>
+          <button @click="showNewRec = true" x-show="!isSystem">+ New Record</button>
+        </div>
       </div>
       <div class="content">
         <div x-show="recLoading" class="empty">Loading…</div>
@@ -561,6 +575,19 @@ function dashboard() {
           this.selectedSchema = this.parseSchema(schemaRes.data.json_schema);
         }
         const recRes = await api("/collections/" + name + "/records?limit=100");
+        if (recRes.status === "success" && recRes.data.length) {
+          this.columns = this.sortColumns(Object.keys(recRes.data[0]));
+          this.records = recRes.data;
+        }
+      } catch (e) { /* ignore */ }
+      this.recLoading = false;
+    },
+
+    async refreshRecords() {
+      this.recLoading = true;
+      this.records = []; this.columns = [];
+      try {
+        const recRes = await api("/collections/" + this.selectedCol + "/records?limit=100");
         if (recRes.status === "success" && recRes.data.length) {
           this.columns = this.sortColumns(Object.keys(recRes.data[0]));
           this.records = recRes.data;
