@@ -18,6 +18,8 @@ public class CollectionRepository {
         this.jdbi = jdbi;
     }
 
+    private record SqlParts(String sql, Map<String, Object> params) {}
+
     // ═══ Schema management ═══
 
     public boolean collectionExists(String name) {
@@ -111,9 +113,10 @@ public class CollectionRepository {
 
     public List<Map<String, Object>> findRecords(String collectionName, Map<String, List<String>> queryParams,
                                                   String readRule, String userId, boolean isAdmin) {
-        String sql = buildSelectSql(collectionName, queryParams, readRule, userId, isAdmin);
+        SqlParts parts = buildSelectSql(collectionName, queryParams, readRule, userId, isAdmin);
         return jdbi.withHandle(handle ->
-                handle.createQuery(sql)
+                handle.createQuery(parts.sql())
+                        .bindMap(parts.params())
                         .map((rs, ctx) -> {
                             Map<String, Object> row = new HashMap<>();
                             var meta = rs.getMetaData();
@@ -127,24 +130,34 @@ public class CollectionRepository {
     }
 
     public int updateRecords(UpdateRecordDTO dto, String updateRule, String userId, boolean isAdmin) {
-        String sql = buildUpdateSql(dto.name(), dto.data(), dto.filter(), updateRule, userId, isAdmin);
-        return jdbi.withHandle(handle -> handle.execute(sql));
+        SqlParts parts = buildUpdateSql(dto.name(), dto.data(), dto.filter(), updateRule, userId, isAdmin);
+        return jdbi.withHandle(handle ->
+                handle.createUpdate(parts.sql())
+                        .bindMap(parts.params())
+                        .execute()
+        );
     }
 
     public int deleteRecords(String collectionName, Map<String, List<String>> queryParams,
                               String updateRule, String userId, boolean isAdmin) {
-        String sql = buildDeleteSql(collectionName, queryParams, updateRule, userId, isAdmin);
-        return jdbi.withHandle(handle -> handle.execute(sql));
+        SqlParts parts = buildDeleteSql(collectionName, queryParams, updateRule, userId, isAdmin);
+        return jdbi.withHandle(handle ->
+                handle.createUpdate(parts.sql())
+                        .bindMap(parts.params())
+                        .execute()
+        );
     }
 
     // ═══ SQL builders ═══
 
-    private String buildSelectSql(String collectionName, Map<String, List<String>> data,
-                                   String readRule, String userId, boolean isAdmin) {
+    private SqlParts buildSelectSql(String collectionName, Map<String, List<String>> data,
+                                     String readRule, String userId, boolean isAdmin) {
         List<String> conditions = new ArrayList<>();
         List<String> orderBy = new ArrayList<>();
         String limit = null;
         String offset = null;
+        Map<String, Object> params = new LinkedHashMap<>();
+        int paramIdx = 0;
 
         for (var entry : data.entrySet()) {
             var keyData = entry.getKey().split(":", 2);
@@ -153,11 +166,18 @@ public class CollectionRepository {
                     case "filter" -> {
                         var filterName = SqlUtils.quoteIdentifier(keyData[1]);
                         for (var value : entry.getValue()) {
-                            conditions.add(filterName + " " + SqlUtils.validateFilter(value));
+                            var fp = SqlUtils.parseFilter(value);
+                            String paramName = "f" + paramIdx;
+                            conditions.add(filterName + " " + fp.operator() + " :" + paramName);
+                            params.put(paramName, fp.value());
+                            paramIdx++;
                         }
                     }
-                    case "sort" ->
-                            orderBy.add(SqlUtils.quoteIdentifier(keyData[1]) + " " + entry.getValue().getFirst());
+                    case "sort" -> {
+                        String dir = entry.getValue().getFirst().toUpperCase();
+                        if (!dir.equals("ASC") && !dir.equals("DESC")) dir = "ASC";
+                        orderBy.add(SqlUtils.quoteIdentifier(keyData[1]) + " " + dir);
+                    }
                 }
             } else {
                 switch (keyData[0]) {
@@ -168,7 +188,8 @@ public class CollectionRepository {
         }
 
         if (!isAdmin && "USER".equals(readRule) && userId != null) {
-            conditions.add("\"created_by\" = '" + userId + "'");
+            conditions.add("\"created_by\" = :_cb");
+            params.put("_cb", userId);
         }
 
         String sql = "SELECT * FROM " + SqlUtils.quoteIdentifier(collectionName);
@@ -177,55 +198,87 @@ public class CollectionRepository {
         if (limit != null) sql += " LIMIT " + SqlUtils.parseIntParam(limit);
         if (offset != null) sql += " OFFSET " + SqlUtils.parseIntParam(offset);
         sql += ";";
-        return sql;
+        return new SqlParts(sql, params);
     }
 
-    private String buildUpdateSql(String collectionName, Map<String, Object> data, Map<String, String> filter,
-                                   String updateRule, String userId, boolean isAdmin) {
+    private SqlParts buildUpdateSql(String collectionName, Map<String, Object> data, Map<String, String> filter,
+                                     String updateRule, String userId, boolean isAdmin) {
         List<String> sqlStrings = new ArrayList<>();
-        int filterCount = 0;
-        int setCount = 0;
+        Map<String, Object> params = new LinkedHashMap<>();
+        int i = 0;
+        int dataI = 0;
+        int paramIdx = 0;
         sqlStrings.add("UPDATE " + SqlUtils.quoteIdentifier(collectionName));
-        for (var entry : data.entrySet()) {
-            sqlStrings.add(setCount == 0 ? " SET " : ", ");
-            sqlStrings.add(SqlUtils.quoteIdentifier(entry.getKey()) + " = " + entry.getValue());
-            setCount++;
+        for (var dataEntry : data.entrySet()) {
+            String paramName = "s" + paramIdx;
+            if (dataI < 1) {
+                sqlStrings.add(" SET " + SqlUtils.quoteIdentifier(dataEntry.getKey()) + " = :" + paramName);
+                dataI++;
+            } else {
+                sqlStrings.add(", " + SqlUtils.quoteIdentifier(dataEntry.getKey()) + " = :" + paramName);
+                dataI++;
+            }
+            params.put(paramName, dataEntry.getValue());
+            paramIdx++;
         }
-        for (var entry : filter.entrySet()) {
-            sqlStrings.add(filterCount == 0 ? " WHERE " : " AND ");
-            sqlStrings.add(SqlUtils.quoteIdentifier(entry.getKey()) + " " + entry.getValue());
-            filterCount++;
+        for (var filterEntry : filter.entrySet()) {
+            var fp = SqlUtils.parseFilter(filterEntry.getValue());
+            String paramName = "f" + paramIdx;
+            if (i < 1) {
+                sqlStrings.add(" WHERE " + SqlUtils.quoteIdentifier(filterEntry.getKey()) + " " + fp.operator() + " :" + paramName);
+                i++;
+            } else {
+                sqlStrings.add(" AND " + SqlUtils.quoteIdentifier(filterEntry.getKey()) + " " + fp.operator() + " :" + paramName);
+                i++;
+            }
+            params.put(paramName, fp.value());
+            paramIdx++;
         }
         if (!isAdmin && "USER".equals(updateRule) && userId != null) {
-            sqlStrings.add(filterCount == 0 ? " WHERE " : " AND ");
-            sqlStrings.add("\"created_by\" = '" + userId + "'");
+            sqlStrings.add(i == 0 ? " WHERE " : " AND ");
+            sqlStrings.add("\"created_by\" = :_cb");
+            params.put("_cb", userId);
         }
         sqlStrings.add(";");
-        return String.join("", sqlStrings);
+        return new SqlParts(String.join("", sqlStrings), params);
     }
 
-    private String buildDeleteSql(String collectionName, Map<String, List<String>> data,
-                                   String updateRule, String userId, boolean isAdmin) {
-        int filterCount = 0;
+    private SqlParts buildDeleteSql(String collectionName, Map<String, List<String>> data,
+                                     String updateRule, String userId, boolean isAdmin) {
+        var filterCount = 0;
         List<String> sqlStrings = new ArrayList<>();
+        Map<String, Object> params = new LinkedHashMap<>();
+        int paramIdx = 0;
         sqlStrings.add("DELETE FROM " + SqlUtils.quoteIdentifier(collectionName));
         for (var entry : data.entrySet()) {
             var keyData = entry.getKey().split(":", 2);
             if (keyData.length < 2 || !"filter".equals(keyData[0])) continue;
             var filterName = SqlUtils.quoteIdentifier(keyData[1]);
-            for (var i : entry.getValue()) {
-                sqlStrings.add(filterCount == 0 ? " WHERE " : " AND ");
-                sqlStrings.add(filterName + " " + i);
-                filterCount++;
+            var filterData = entry.getValue();
+            for (var filterValue : filterData) {
+                var fp = SqlUtils.parseFilter(filterValue);
+                String paramName = "f" + paramIdx;
+                if (filterCount == 0) {
+                    sqlStrings.add(" WHERE ");
+                    sqlStrings.add(filterName + " " + fp.operator() + " :" + paramName);
+                    filterCount++;
+                } else {
+                    sqlStrings.add(" AND ");
+                    sqlStrings.add(filterName + " " + fp.operator() + " :" + paramName);
+                    filterCount++;
+                }
+                params.put(paramName, fp.value());
+                paramIdx++;
             }
         }
         if (!isAdmin && "USER".equals(updateRule) && userId != null) {
             sqlStrings.add(filterCount == 0 ? " WHERE " : " AND ");
-            sqlStrings.add("\"created_by\" = '" + userId + "'");
+            sqlStrings.add("\"created_by\" = :_cb");
+            params.put("_cb", userId);
             filterCount++;
         }
         sqlStrings.add(";");
-        return String.join("", sqlStrings);
+        return new SqlParts(String.join("", sqlStrings), params);
     }
 
     private String buildColumnDef(FieldDefinition field) {

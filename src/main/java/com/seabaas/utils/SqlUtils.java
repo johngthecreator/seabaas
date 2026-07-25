@@ -1,6 +1,7 @@
 package com.seabaas.utils;
 
 import java.security.SecureRandom;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class SqlUtils {
@@ -8,6 +9,8 @@ public final class SqlUtils {
     private static final Pattern FILTER = Pattern.compile("^(>=|<=|!=|!~|~|>|<|=)\\s*.+$");
 
     private SqlUtils() {}
+
+    public record FilterParts(String operator, String value) {}
 
     public static String validateIdentifier(String name) {
         if (name == null || !IDENTIFIER.matcher(name).matches()) {
@@ -33,6 +36,19 @@ public final class SqlUtils {
             throw new IllegalArgumentException("Invalid filter expression: " + input);
         }
         return input;
+    }
+
+    public static FilterParts parseFilter(String input) {
+        if (input == null) {
+            throw new IllegalArgumentException("Invalid filter expression: null");
+        }
+        Matcher m = FILTER.matcher(input);
+        if (!m.matches()) {
+            throw new IllegalArgumentException("Invalid filter expression: " + input);
+        }
+        String operator = m.group(1);
+        String value = input.substring(operator.length()).trim();
+        return new FilterParts(operator, value);
     }
 
     public static String generateId() {

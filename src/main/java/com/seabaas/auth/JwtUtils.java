@@ -11,10 +11,22 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class JwtUtils {
-    // HS256 requires a key of at least 32 bytes (256 bits)
-    private static final SecretKey KEY = Keys.hmacShaKeyFor(
-            System.getenv("JWT_SECRET").getBytes()
-    );
+    private static final SecretKey KEY;
+
+    static {
+        String secret = System.getenv("JWT_SECRET");
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException(
+                    "JWT_SECRET environment variable is not set. Set it to a key of at least 32 characters."
+            );
+        }
+        if (secret.length() < 32) {
+            throw new IllegalStateException(
+                    "JWT_SECRET must be at least 32 characters long for HS256. Current length: " + secret.length()
+            );
+        }
+        KEY = Keys.hmacShaKeyFor(secret.getBytes());
+    }
 
     public static String generate(String userId, Set<Role> roles) {
         return Jwts.builder()
@@ -22,7 +34,6 @@ public class JwtUtils {
                 .claim("roles", roles.stream().map(Enum::name).toList())
                 .issuedAt(Date.from(Instant.now()))
                 .expiration(Date.from(Instant.now().plusMillis(86_400_000)))
-                // 24h
                 .signWith(KEY)
                 .compact();
     }
