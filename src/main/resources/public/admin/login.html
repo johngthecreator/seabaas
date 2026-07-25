@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Seabaas — Admin Login</title>
+<title>Snapbase — Admin Login</title>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.15.12/dist/cdn.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -81,7 +81,7 @@ function loginPage() {
         });
         const data = await res.json();
         if (data.status === "success") {
-          localStorage.setItem("seabaas_token", data.token);
+          localStorage.setItem("snapbase_token", data.token);
           window.location.href = "/admin/dashboard.html";
         } else {
           this.error = data.message || "Invalid credentials";

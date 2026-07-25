@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Seabaas — Admin</title>
+<title>Snapbase — Admin</title>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.15.12/dist/cdn.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -238,7 +238,7 @@
 
 <!-- ── Sidebar ── -->
 <aside class="sidebar">
-  <div class="sidebar-logo">Seabaas</div>
+  <div class="sidebar-logo">Snapbase</div>
 
   <div class="sidebar-section-title">Collections</div>
   <div class="sidebar-collections">
@@ -491,7 +491,7 @@
 
 <script>
 function dashboard() {
-  const token = () => localStorage.getItem("seabaas_token");
+  const token = () => localStorage.getItem("snapbase_token");
   const api = (url, opts = {}) => fetch(url, {
     ...opts,
     headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token(), ...opts.headers },
@@ -524,7 +524,7 @@ function dashboard() {
       this.loadCollections();
     },
 
-    logout() { localStorage.removeItem("seabaas_token"); window.location.href = "/admin/login.html"; },
+    logout() { localStorage.removeItem("snapbase_token"); window.location.href = "/admin/login.html"; },
 
     parseSchema(json) {
       try { return JSON.parse(json); } catch (e) { return []; }

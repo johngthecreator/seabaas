@@ -1,12 +1,12 @@
-# Seabaas
+# Snapbase
 
 Dynamic backend-as-a-service. Define collections with custom schemas, then query and mutate records via a REST API. SQLite under the hood.
 
 ## File Structure
 
 ```
-src/main/java/com/seabaas/
-├── SeabaasBackendMain.java          # Entry point, Javalin config, routes
+src/main/java/com/snapbase/
+├── SnapbaseBackendMain.java          # Entry point, Javalin config, routes
 ├── auth/
 │   ├── JwtUtils.java                # JWT generation & validation
 │   └── Role.java                    # Route roles: ALL, USER, ADMIN
@@ -89,7 +89,7 @@ export JWT_SECRET="your-secret-key"
 Then start the server:
 
 ```bash
-./mvnw compile exec:java -Dexec.mainClass="com.seabaas.SeabaasBackendMain"
+./mvnw compile exec:java -Dexec.mainClass="com.snapbase.SnapbaseBackendMain"
 ```
 
 Starts on `http://localhost:7070`.
