@@ -113,6 +113,9 @@ public class CollectionRepository {
 
     public List<Map<String, Object>> findRecords(String collectionName, Map<String, List<String>> queryParams,
                                                   String readRule, String userId, boolean isAdmin) {
+        if (!isAdmin && "ADMIN".equals(readRule)) {
+            return List.of();
+        }
         SqlParts parts = buildSelectSql(collectionName, queryParams, readRule, userId, isAdmin);
         return jdbi.withHandle(handle ->
                 handle.createQuery(parts.sql())
@@ -130,6 +133,9 @@ public class CollectionRepository {
     }
 
     public int updateRecords(UpdateRecordDTO dto, String updateRule, String userId, boolean isAdmin) {
+        if (!isAdmin && "ADMIN".equals(updateRule)) {
+            return 0;
+        }
         SqlParts parts = buildUpdateSql(dto.name(), dto.data(), dto.filter(), updateRule, userId, isAdmin);
         return jdbi.withHandle(handle ->
                 handle.createUpdate(parts.sql())
@@ -140,6 +146,9 @@ public class CollectionRepository {
 
     public int deleteRecords(String collectionName, Map<String, List<String>> queryParams,
                               String updateRule, String userId, boolean isAdmin) {
+        if (!isAdmin && "ADMIN".equals(updateRule)) {
+            return 0;
+        }
         SqlParts parts = buildDeleteSql(collectionName, queryParams, updateRule, userId, isAdmin);
         return jdbi.withHandle(handle ->
                 handle.createUpdate(parts.sql())

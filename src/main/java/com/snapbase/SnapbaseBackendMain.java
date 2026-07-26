@@ -45,12 +45,10 @@ public class SnapbaseBackendMain {
                 staticFiles.location = io.javalin.http.staticfiles.Location.CLASSPATH;
             });
             config.routes.beforeMatched(ctx -> {
-                // Look up what roles this route requires
                 var required = ctx.routeRoles();
-                if (required.isEmpty() || required.contains(Role.ALL))
+                if (required.isEmpty() || required.contains(Role.ANYONE))
                     return;
 
-                // Protected route: expect "Authorization: Bearer <token>"
                 String header = ctx.header("Authorization");
                 if (header == null || !header.startsWith("Bearer ")) {
                     throw new UnauthorizedResponse();
@@ -58,25 +56,32 @@ public class SnapbaseBackendMain {
 
                 try {
                     var userRoles = JwtUtils.validate(header.substring(7));
-                    // User's roles must satisfy at least one required role
-                    if (userRoles.stream().noneMatch(required::contains))
-                    {
+
+                    if (required.contains(Role.ALL))
+                        return;
+
+                    if (userRoles.stream().noneMatch(required::contains)) {
                         throw new ForbiddenResponse();
                     }
                 } catch (JwtException e) {
-                    // Bad signature or expired token -> 401, not 500
                     throw new UnauthorizedResponse();
                 }
             });
+            config.bundledPlugins.enableCors(cors -> {
+                cors.addRule(it -> {
+                    it.allowHost("http://localhost:5173", "https://your-frontend-domain.com");
+                    it.allowCredentials = true;
+                });
+            });
             config.routes.apiBuilder(() -> {
-                get("/admin/signup", ctx -> ctx.redirect("/admin/signup.html"), Role.ALL);
-                get("/admin/login", ctx -> ctx.redirect("/admin/login.html"), Role.ALL);
-                get("/admin/dashboard", ctx -> ctx.redirect("/admin/dashboard.html"), Role.ALL);
-                get("/admin/setup", authController::getSetup, Role.ALL);
-                post("/admin/setup", authController::postSetup, Role.ALL);
-                post("/admin/login", authController::loginAdmin, Role.ALL);
-                post("/auth/login", authController::login, Role.ALL);
-                post("/auth/signup", authController::signup, Role.ALL);
+                get("/admin/signup", ctx -> ctx.redirect("/admin/signup.html"), Role.ANYONE);
+                get("/admin/login", ctx -> ctx.redirect("/admin/login.html"), Role.ANYONE);
+                get("/admin/dashboard", ctx -> ctx.redirect("/admin/dashboard.html"), Role.ADMIN);
+                get("/admin/setup", authController::getSetup, Role.ANYONE);
+                post("/admin/setup", authController::postSetup, Role.ANYONE);
+                post("/admin/login", authController::loginAdmin, Role.ANYONE);
+                post("/auth/login", authController::login, Role.ANYONE);
+                post("/auth/signup", authController::signup, Role.ANYONE);
                 get("/collections", collectionController::listCollections, Role.ADMIN);
                 get("/collections/{name}/schema", collectionController::getSchema, Role.ADMIN);
                 post("/collections", collectionController::create, Role.ADMIN);

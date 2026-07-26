@@ -628,7 +628,7 @@ function dashboard() {
       this.showDeleteModal = null;
       this.deleting = id;
       try {
-        await api("/collections/" + this.selectedCol + "/records?filter:id== '" + id +"'", { method: "DELETE" });
+        await api("/collections/" + this.selectedCol + "/records?filter:id==" + id, { method: "DELETE" });
         this.records = this.records.filter(r => r.id !== id);
       } catch (e) { /* ignore */ }
       this.deleting = null;

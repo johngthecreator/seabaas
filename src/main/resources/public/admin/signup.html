@@ -94,7 +94,7 @@ function setupPage() {
         });
         const data = await res.json();
         if (data.status === "success") {
-          localStorage.setItem("snapbase_token", data.token);
+          localStorage.setItem("snapbase_token", data.data.token);
           this.complete = true;
           setTimeout(() => { window.location.href = "/admin/dashboard.html"; }, 1500);
         } else {

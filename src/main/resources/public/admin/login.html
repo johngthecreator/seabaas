@@ -81,7 +81,7 @@ function loginPage() {
         });
         const data = await res.json();
         if (data.status === "success") {
-          localStorage.setItem("snapbase_token", data.token);
+          localStorage.setItem("snapbase_token", data.data.token);
           window.location.href = "/admin/dashboard.html";
         } else {
           this.error = data.message || "Invalid credentials";
