@@ -13,7 +13,7 @@ export JWT_SECRET="your-secret-key"
 Then start the server:
 
 ```bash
-./mvnw compile exec:java -Dexec.mainClass="com.snapbase.SnapbaseBackendMain"
+./mvnw compile exec:java -Dexec.mainClass="com.snapbase.SnapbaseApp"
 ```
 
 Starts on `http://localhost:7070`. The admin dashboard is at `/admin/dashboard.html`.
@@ -214,11 +214,56 @@ Response:
 { "status": "success" }
 ```
 
+## Embedding as a Library
+
+Add snapbase as a dependency:
+
+```xml
+<dependency>
+    <groupId>com.snapbase</groupId>
+    <artifactId>snapbase</artifactId>
+    <version>0.1</version>
+</dependency>
+```
+
+```java
+import com.snapbase.SnapbaseApp;
+import com.snapbase.auth.Role;
+import static io.javalin.apibuilder.ApiBuilder.*;
+
+new SnapbaseApp().start(7070, "http://localhost:5173", config ->
+    config.routes.apiBuilder(() -> {
+        get("/api/items", ctx -> ctx.json("ok"), Role.USER);
+        post("/api/items", ctx -> ctx.json("ok"), Role.USER);
+        delete("/api/items", ctx -> ctx.json("ok"), Role.ADMIN);
+    })
+);
+```
+
+### Role reference
+
+| Role | Token accepted | Notes |
+|---|---|---|
+| `ANYONE` | None | No auth required |
+| `ALL` | User or Admin | Any authenticated request |
+| `USER` | User | Authenticated users |
+| `ADMIN` | Admin | Admin dashboard only |
+
+`ALL` and `USER` both accept user tokens. The difference is that `ALL` applies no ownership filter, while `USER` restricts records to the token holder via the `created_by` column. For custom endpoints, prefer `Role.USER` — it ensures requests are authenticated by a regular user.
+
+### Standalone fat JAR
+
+```bash
+JWT_SECRET="your-secret" java -jar snapbase-0.1-shaded.jar [port] [cors-host]
+```
+
+Defaults: port `7070`, cors-host `http://localhost:5173`.
+
 ## File Structure
 
 ```
 src/main/java/com/snapbase/
-├── SnapbaseBackendMain.java          # Entry point, Javalin config, routes
+├── SnapbaseApp.java                  # Entry point, Javalin config, routes
 ├── auth/
 │   ├── JwtUtils.java                # JWT generation & validation
 │   └── Role.java                    # Route roles: ANYONE, ALL, USER, ADMIN

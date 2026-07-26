@@ -7,28 +7,34 @@ import com.snapbase.controllers.CollectionController;
 import com.snapbase.db.Database;
 import com.snapbase.factories.AuthFactory;
 import com.snapbase.factories.CollectionFactory;
+import com.snapbase.services.AdminSetupService;
 import io.javalin.Javalin;
+import io.javalin.config.JavalinConfig;
 import io.javalin.http.ForbiddenResponse;
 import io.javalin.http.UnauthorizedResponse;
 import io.javalin.json.JavalinJackson;
 import io.jsonwebtoken.JwtException;
 
+import java.util.function.Consumer;
+
 import static io.javalin.apibuilder.ApiBuilder.*;
 
-public class SnapbaseBackendMain {
-    public static void main(String[] args) {
+public class SnapbaseApp {
+    private final AuthController authController;
+    private final CollectionController collectionController;
 
+    public SnapbaseApp(){
         var jdbi = Database.getInstance();
-        var authController = AuthFactory.create(jdbi);
+        this.authController = AuthFactory.create(jdbi);
         var setupService = AuthFactory.createSetupService(jdbi);
-        var collectionController = CollectionFactory.create(jdbi);
+        this.collectionController = CollectionFactory.create(jdbi);
         jdbi.withHandle(handle ->
-            handle.createScript("""
+                handle.createScript("""
                     CREATE TABLE IF NOT EXISTS collections ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT DEFAULT '', json_schema TEXT DEFAULT '{}', read_rule TEXT DEFAULT 'ALL', update_rule TEXT DEFAULT 'ALL'); 
                     CREATE TABLE IF NOT EXISTS users ( id TEXT PRIMARY KEY, name TEXT DEFAULT '', email TEXT UNIQUE DEFAULT '', password TEXT DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP);
                     CREATE TABLE IF NOT EXISTS superusers ( id TEXT PRIMARY KEY, name TEXT DEFAULT '', email TEXT UNIQUE DEFAULT '', password TEXT DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP);
                     """
-            ).execute()
+                ).execute()
         );
 
         var code = setupService.getSetupCode();
@@ -38,7 +44,15 @@ public class SnapbaseBackendMain {
             System.out.println("  http://localhost:7070/admin/signup.html?code=" + code);
             System.out.println("================================================");
         }
-        Javalin.create(config -> {
+
+    }
+
+    public Javalin start(int port, String host) {
+        return start(port, host, config -> {});
+    }
+
+    public Javalin start(int port, String host, Consumer<JavalinConfig> extraConfig) {
+        return Javalin.create(config -> {
             config.jsonMapper(new JavalinJackson());
             config.staticFiles.add(staticFiles -> {
                 staticFiles.directory = "/public";
@@ -69,7 +83,7 @@ public class SnapbaseBackendMain {
             });
             config.bundledPlugins.enableCors(cors -> {
                 cors.addRule(it -> {
-                    it.allowHost("http://localhost:5173", "https://your-frontend-domain.com");
+                    it.allowHost(host);
                     it.allowCredentials = true;
                 });
             });
@@ -77,19 +91,27 @@ public class SnapbaseBackendMain {
                 get("/admin/signup", ctx -> ctx.redirect("/admin/signup.html"), Role.ANYONE);
                 get("/admin/login", ctx -> ctx.redirect("/admin/login.html"), Role.ANYONE);
                 get("/admin/dashboard", ctx -> ctx.redirect("/admin/dashboard.html"), Role.ADMIN);
-                get("/admin/setup", authController::getSetup, Role.ANYONE);
-                post("/admin/setup", authController::postSetup, Role.ANYONE);
-                post("/admin/login", authController::loginAdmin, Role.ANYONE);
-                post("/auth/login", authController::login, Role.ANYONE);
-                post("/auth/signup", authController::signup, Role.ANYONE);
-                get("/collections", collectionController::listCollections, Role.ADMIN);
-                get("/collections/{name}/schema", collectionController::getSchema, Role.ADMIN);
-                post("/collections", collectionController::create, Role.ADMIN);
-                get("/collections/{collection}/records", collectionController::findRecords, Role.USER);
-                delete("/collections/{collection}/records", collectionController::deleteRecords, Role.USER);
-                patch("/collections/{collection}/records", collectionController::updateRecord, Role.USER);
-                post("/collections/{collection}/records", collectionController::insertRecord, Role.USER);
+                get("/admin/setup", this.authController::getSetup, Role.ANYONE);
+                post("/admin/setup", this.authController::postSetup, Role.ANYONE);
+                post("/admin/login", this.authController::loginAdmin, Role.ANYONE);
+                post("/auth/login", this.authController::login, Role.ANYONE);
+                post("/auth/signup", this.authController::signup, Role.ANYONE);
+                get("/collections", this.collectionController::listCollections, Role.ADMIN);
+                get("/collections/{name}/schema", this.collectionController::getSchema, Role.ADMIN);
+                post("/collections", this.collectionController::create, Role.ADMIN);
+                get("/collections/{collection}/records", this.collectionController::findRecords, Role.USER);
+                delete("/collections/{collection}/records", this.collectionController::deleteRecords, Role.USER);
+                patch("/collections/{collection}/records", this.collectionController::updateRecord, Role.USER);
+                post("/collections/{collection}/records", this.collectionController::insertRecord, Role.USER);
             });
-        }).start(7070);
+            extraConfig.accept(config);
+        }).start(port);
     }
+
+    public static void main(String[] args) {
+        int port = args.length > 0 ? Integer.parseInt(args[0]) : 7070;
+        String host = args.length > 1 ? args[1] : "http://localhost:5173";
+        new SnapbaseApp().start(port, host);
+    }
+
 }
