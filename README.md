@@ -277,6 +277,22 @@ JWT_SECRET="your-secret" java -jar snapbase-0.1-shaded.jar [port] [cors-host]
 
 Defaults: port `7070`, cors-host `http://localhost:5173`.
 
+## Client SDK
+
+JavaScript/TypeScript client for talking to a Snapbase instance from the browser or Node.js:
+
+```bash
+npm install @snapbase/client-sdk
+```
+
+```ts
+import { SnapbaseClient } from '@snapbase/client-sdk';
+
+const client = new SnapbaseClient('http://localhost:7070');
+await client.login('alice@test.com', 'secret');
+const users = await client.collection('users').find({ 'filter:age': '>=18' });
+```
+
 ## File Structure
 
 ```
@@ -339,4 +355,3 @@ src/main/java/com/snapbase/
 - [x] Add collection delete endpoint
 - [x] Add collection update (schema migration) endpoint
 - [x] Executable jar and importable package
-- [ ] Make extensible via plugin/extension system
