@@ -1,10 +1,10 @@
 # Snapbase
 
-Dynamic backend-as-a-service. Define collections with custom schemas via the admin dashboard, then query and mutate records via a REST API. SQLite under the hood.
+Lightweight backend-as-a-service for micro SaaS, internal tooling, and rapid POCs. SQLite under the hood. Max usability, minimal code — plain, straightforward logic you can actually read and reason about.
 
 ## Running
 
-Requires `JWT_SECRET` in your environment:
+Requires Java 21 and `JWT_SECRET` in your environment:
 
 ```bash
 export JWT_SECRET="your-secret-key"
@@ -338,5 +338,5 @@ src/main/java/com/snapbase/
 - [ ] Add user delete endpoint
 - [x] Add collection delete endpoint
 - [x] Add collection update (schema migration) endpoint
-- [ ] Package as a standalone binary (native image)
+- [x] Executable jar and importable package
 - [ ] Make extensible via plugin/extension system
