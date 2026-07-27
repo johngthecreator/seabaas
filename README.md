@@ -214,6 +214,24 @@ Response:
 { "status": "success" }
 ```
 
+## Deleting a Collection
+
+Click the trash icon on a collection card in the dashboard to delete it. Once deleted, the collection and all records inside it are gone permanently. The built-in `users` and `superusers` collections are locked — they can't be deleted.
+
+---
+
+## Updating a Collection (Schema Migration)
+
+You can change a collection's fields after creating it — this is how "migrations" work in snapbase. Add new fields, remove old ones, or change the read and update rules. The collection updates in-place and the change takes effect immediately.
+
+A few things to keep in mind:
+
+- You can only add or remove fields. Renaming a field or changing its type? You'll need to remove the old one and add a new one instead.
+- Removing a field also removes all data that was stored in that field.
+- There's no undo — changes apply right away with no history to revert to.
+
+---
+
 ## Embedding as a Library
 
 Add snapbase as a dependency:
@@ -280,7 +298,7 @@ src/main/java/com/snapbase/
 │   ├── SignupDTO.java               # Signup request
 │   └── UpdateRecordDTO.java         # PATCH /collections/{name}/records request
 ├── enums/
-│   └── DataTypeEnum.java            # TEXT, EMAIL, NUMBER, BOOLEAN, URL, DATETIME, JSON
+│   └── DataTypeEnum.java            # TEXT, NUMBER, BOOLEAN, DATETIME, JSON
 ├── exceptions/
 │   └── ResponseException.java       # HTTP error with status code
 ├── factories/
@@ -318,7 +336,7 @@ src/main/java/com/snapbase/
 - [ ] Add password reset flow (admin dashboard)
 - [ ] Add superuser delete endpoint
 - [ ] Add user delete endpoint
-- [ ] Add collection delete endpoint
-- [ ] Add collection update (schema migration) endpoint
+- [x] Add collection delete endpoint
+- [x] Add collection update (schema migration) endpoint
 - [ ] Package as a standalone binary (native image)
 - [ ] Make extensible via plugin/extension system
