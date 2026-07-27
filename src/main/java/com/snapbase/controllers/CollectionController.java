@@ -46,6 +46,30 @@ public class CollectionController {
         }
     }
 
+    public void update(Context ctx) {
+        try {
+            var dto = ctx.bodyValidator(CreateCollectionDTO.class).get();
+            var result = this.collectionService.update(dto);
+            ctx.status(200).json(Map.of("status", "success", "data", Map.of("updated_schema_id", result)));
+        } catch (ResponseException e) {
+            ctx.status(e.getStatus()).json(Map.of("status", "error", "message", e.getMessage()));
+        } catch (Exception e) {
+            ctx.status(500).json(Map.of("status", "error", "message", "Internal server error"));
+        }
+    }
+
+    public void delete(Context ctx) {
+        try {
+            String name = ctx.pathParam("name");
+            this.collectionService.delete(name);
+            ctx.status(200).json(Map.of("status", "success"));
+        } catch (ResponseException e) {
+            ctx.status(e.getStatus()).json(Map.of("status", "error", "message", e.getMessage()));
+        } catch (Exception e) {
+            ctx.status(500).json(Map.of("status", "error", "message", "Internal server error"));
+        }
+    }
+
     public void insertRecord(Context ctx) {
         try {
             var auth = extractAuth(ctx);

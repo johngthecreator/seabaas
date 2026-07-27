@@ -315,7 +315,13 @@
 
         <div class="cards-grid" x-show="collections.length">
           <template x-for="col in collections" :key="col.id">
-            <div class="collection-card" @click="openCollection(col.name)">
+            <div class="collection-card" @click="openCollection(col.name)" style="position:relative">
+              <button @click.stop="promptDeleteCol(col.name)"
+                      style="position:absolute;top:8px;right:8px;background:none;border:none;color:#a1a1a1;cursor:pointer;padding:4px 8px;border-radius:6px;transition:color 0.15s"
+                      class="trash-btn"
+                      :title="'Delete collection ' + col.name">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
               <div class="collection-card-name" x-text="col.name"></div>
               <div class="collection-card-type">BASE</div>
               <div class="collection-card-fields">
@@ -343,6 +349,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             Refresh
           </button>
+          <button class="ghost" @click="openEditCollection" x-show="!isSystem">Edit Collection</button>
           <button @click="showNewRec = true" x-show="!isSystem">+ New Record</button>
         </div>
       </div>
@@ -361,7 +368,7 @@
               </thead>
               <tbody>
                 <template x-for="row in records" :key="row.id">
-                  <tr style="cursor:pointer" @click="openRecord(row)">
+                  <tr style="cursor:pointer" @click="openEditRecord(row)">
                     <template x-for="col in columns" :key="col">
                       <td x-text="row[col]"></td>
                     </template>
@@ -387,7 +394,7 @@
 </div>
 
 <!-- ── New Collection Modal ── -->
-<div class="modal-overlay" x-show="showNewCol" @click.self="showNewCol = false">
+<div class="modal-overlay" x-show="showNewCol" @click.self="closeNewColModal()">
   <div class="modal">
     <h3>New Collection</h3>
     <form @submit.prevent="createCollection">
@@ -420,8 +427,6 @@
             <option value="TEXT">text</option>
             <option value="NUMBER">number</option>
             <option value="BOOLEAN">boolean</option>
-            <option value="EMAIL">email</option>
-            <option value="URL">url</option>
             <option value="DATETIME">datetime</option>
             <option value="JSON">json</option>
           </select>
@@ -437,7 +442,7 @@
       <div class="msg msg--error" x-show="colError" x-text="colError"></div>
       <div class="msg msg--success" x-show="colSuccess" x-text="colSuccess"></div>
       <div class="flex-gap-12">
-        <button type="button" class="ghost" @click="showNewCol = false"
+        <button type="button" class="ghost" @click="closeNewColModal()"
                 style="background:#fff;color:#171717;border:1px solid #ebebeb;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1">Cancel</button>
         <button type="submit"
                 style="background:#171717;color:#fff;border:none;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1"
@@ -472,6 +477,92 @@
   </div>
 </div>
 
+<!-- ── Edit Record Modal ── -->
+<div class="modal-overlay" x-show="showEditRec" @click.self="showEditRec = false">
+  <div class="modal">
+    <h3>Edit Record — <span x-text="selectedCol"></span></h3>
+    <p style="font-family:Geist Mono,ui-monospace;font-size:12px;color:#8f8f8f;margin-bottom:16px" x-text="editRecId"></p>
+    <form @submit.prevent="updateRecord">
+      <template x-for="field in selectedSchema" :key="field.name">
+        <div style="margin-bottom:12px">
+          <label x-text="field.name"
+                 style="display:block;font-family:Geist Mono,ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:500;text-transform:uppercase;color:#8f8f8f;margin-bottom:4px"></label>
+          <input type="text" x-model="editRec[field.name]" :required="field.required" class="w-full">
+        </div>
+      </template>
+      <div class="msg msg--error" x-show="recUpdateError" x-text="recUpdateError"></div>
+      <div class="flex-gap-12">
+        <button type="button" @click="showEditRec = false"
+                style="background:#fff;color:#171717;border:1px solid #ebebeb;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1">Cancel</button>
+        <button type="submit"
+                style="background:#171717;color:#fff;border:none;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1"
+                :disabled="recUpdating">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Edit Collection Modal ── -->
+<div class="modal-overlay" x-show="showEditCol" @click.self="showEditCol = false">
+  <div class="modal">
+    <h3>Edit Collection</h3>
+    <form @submit.prevent="updateCollection">
+      <input type="text" x-model="editCol.name" disabled class="w-full mb-16" style="opacity:0.6">
+
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <div style="flex:1">
+          <div style="font-family:Geist Mono,ui-monospace;font-size:12px;font-weight:500;text-transform:uppercase;color:#8f8f8f;margin-bottom:4px">Read Rule</div>
+          <select x-model="editCol.readRule" class="field-control" style="width:100%">
+            <option value="ALL">ALL</option>
+            <option value="USER">USER</option>
+            <option value="ADMIN">ADMIN</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          <div style="font-family:Geist Mono,ui-monospace;font-size:12px;font-weight:500;text-transform:uppercase;color:#8f8f8f;margin-bottom:4px">Update Rule</div>
+          <select x-model="editCol.updateRule" class="field-control" style="width:100%">
+            <option value="ALL">ALL</option>
+            <option value="USER">USER</option>
+            <option value="ADMIN">ADMIN</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-row" style="color:#8f8f8f;font-size:12px;font-family:Geist Mono,ui-monospace;text-transform:uppercase;margin-bottom:8px">
+        <span style="flex:1">Name</span><span style="flex:1">Type</span><span style="width:36px">REQ</span><span style="width:36px"></span>
+      </div>
+      <template x-for="(field, idx) in editCol.fields" :key="idx">
+        <div class="field-row">
+          <input type="text" x-model="field.name" placeholder="field_name" required class="field-control" style="flex:1;min-width:0">
+          <select x-model="field.type" required class="field-control" style="flex:1;min-width:0">
+            <option value="TEXT">text</option>
+            <option value="NUMBER">number</option>
+            <option value="BOOLEAN">boolean</option>
+            <option value="DATETIME">datetime</option>
+            <option value="JSON">json</option>
+          </select>
+          <button type="button" class="field-toggle" :class="{ on: field.required }"
+                  @click="field.required = !field.required"
+                  :title="field.required ? 'Required' : 'Optional'"></button>
+          <button type="button" class="field-remove"
+                  @click="editCol.fields.splice(idx,1)">&times;</button>
+        </div>
+      </template>
+      <button type="button" @click="editCol.fields.push({name:'',type:'TEXT',required:false})"
+              style="background:none;border:none;color:#8f8f8f;cursor:pointer;font-size:13px;margin-bottom:16px;font-family:inherit">+ Add field</button>
+      <div class="msg msg--error" x-show="colUpdateError" x-text="colUpdateError"></div>
+      <div class="msg msg--success" x-show="colUpdateSuccess" x-text="colUpdateSuccess"></div>
+      <div class="flex-gap-12">
+        <button type="button" class="ghost" @click="showEditCol = false"
+                style="background:#fff;color:#171717;border:1px solid #ebebeb;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1">Cancel</button>
+        <button type="submit"
+                style="background:#171717;color:#fff;border:none;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1"
+                :disabled="colUpdating">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- ── Delete Record Modal ── -->
 <div class="modal-overlay" x-show="showDeleteModal" @click.self="showDeleteModal = null">
   <div class="modal" style="max-width:400px">
@@ -485,6 +576,23 @@
       <button type="button" @click="deleteRecord(showDeleteModal, true)"
               style="background:#ee0000;color:#fff;border:none;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1"
               :disabled="deleting">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete Collection Modal ── -->
+<div class="modal-overlay" x-show="showDeleteCol" @click.self="showDeleteCol = null">
+  <div class="modal" style="max-width:400px">
+    <h3>Delete Collection</h3>
+    <p style="font-size:14px;color:#4d4d4d;margin-bottom:16px">
+      Are you sure you want to delete <strong x-text="showDeleteCol"></strong>? The table and all its records will be permanently deleted.
+    </p>
+    <div class="flex-gap-12">
+      <button type="button" @click="showDeleteCol = null"
+              style="background:#fff;color:#171717;border:1px solid #ebebeb;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1">Cancel</button>
+      <button type="button" @click="deleteCollection(showDeleteCol)"
+              style="background:#ee0000;color:#fff;border:none;border-radius:6px;font-family:inherit;font-size:14px;font-weight:500;padding:6px 12px;cursor:pointer;flex:1"
+              :disabled="deletingCol">Delete</button>
     </div>
   </div>
 </div>
@@ -503,18 +611,29 @@ function dashboard() {
     collections: [],
     selectedCol: "",
     selectedSchema: [],
+    selectedReadRule: "ALL",
+    selectedUpdateRule: "ALL",
     records: [], columns: [], recLoading: false,
 
     /* collections view */
     showNewCol: false,
     newCol: { name: "", fields: [{ name: "", type: "TEXT", required: false }], readRule: "ALL", updateRule: "ALL" },
     colLoading: false, colError: "", colSuccess: "",
+    showEditCol: false,
+    editCol: { name: "", fields: [], readRule: "ALL", updateRule: "ALL" },
+    colUpdating: false, colUpdateError: "", colUpdateSuccess: "",
+    showDeleteCol: null,
+    deletingCol: false,
 
     /* records view */
     isSystem: false,
     showNewRec: false,
     newRec: {},
     recCreating: false, recError: "",
+    showEditRec: false,
+    editRec: {},
+    editRecId: null,
+    recUpdating: false, recUpdateError: "",
     deleting: null,
     showDeleteModal: null,
 
@@ -546,8 +665,10 @@ function dashboard() {
       this.view = "records";
       this.selectedCol = name;
       this.isSystem = true;
+      this.selectedReadRule = "ALL";
+      this.selectedUpdateRule = "ALL";
       this.selectedSchema = [
-        { name: "email", type: "EMAIL", required: true },
+        { name: "email", type: "TEXT", required: true },
         { name: "name", type: "TEXT", required: false },
         { name: "password", type: "TEXT", required: false },
       ];
@@ -573,6 +694,8 @@ function dashboard() {
         const schemaRes = await api("/collections/" + name + "/schema");
         if (schemaRes.status === "success" && schemaRes.data) {
           this.selectedSchema = this.parseSchema(schemaRes.data.json_schema);
+          this.selectedReadRule = schemaRes.data.read_rule || "ALL";
+          this.selectedUpdateRule = schemaRes.data.update_rule || "ALL";
         }
         const recRes = await api("/collections/" + name + "/records?limit=100");
         if (recRes.status === "success" && recRes.data.length) {
@@ -596,8 +719,14 @@ function dashboard() {
       this.recLoading = false;
     },
 
-    openRecord(row) {
-      console.log("Record:", row);
+    openEditRecord(row) {
+      this.editRecId = row.id;
+      this.editRec = { ...row };
+      delete this.editRec.id;
+      delete this.editRec.created_at;
+      delete this.editRec.created_by;
+      this.recUpdateError = "";
+      this.showEditRec = true;
     },
 
     async createCollection() {
@@ -608,15 +737,67 @@ function dashboard() {
           body: JSON.stringify({ name: this.newCol.name, fields: this.newCol.fields.filter(f => f.name), readRule: this.newCol.readRule, updateRule: this.newCol.updateRule }),
         });
         if (res.status === "success") {
-          this.colSuccess = "Collection created";
-          this.showNewCol = false;
-          this.newCol = { name: "", fields: [{ name: "", type: "TEXT", required: false }], readRule: "ALL", updateRule: "ALL" };
+          this.closeNewColModal();
           await this.loadCollections();
         } else {
           this.colError = res.message || "Failed";
         }
       } catch (e) { this.colError = "Network error"; }
       this.colLoading = false;
+    },
+
+    closeNewColModal() {
+      this.showNewCol = false;
+      this.newCol = { name: "", fields: [{ name: "", type: "TEXT", required: false }], readRule: "ALL", updateRule: "ALL" };
+      this.colError = ""; this.colSuccess = "";
+    },
+
+    openEditCollection() {
+      this.editCol = {
+        name: this.selectedCol,
+        fields: JSON.parse(JSON.stringify(this.selectedSchema)),
+        readRule: this.selectedReadRule,
+        updateRule: this.selectedUpdateRule,
+      };
+      this.colUpdateError = ""; this.colUpdateSuccess = "";
+      this.showEditCol = true;
+    },
+
+    async updateCollection() {
+      this.colUpdating = true; this.colUpdateError = ""; this.colUpdateSuccess = "";
+      try {
+        const res = await api("/collections", {
+          method: "PATCH",
+          body: JSON.stringify({ name: this.editCol.name, fields: this.editCol.fields.filter(f => f.name), readRule: this.editCol.readRule, updateRule: this.editCol.updateRule }),
+        });
+        if (res.status === "success") {
+          this.colUpdateSuccess = "Collection updated";
+          this.showEditCol = false;
+          await this.loadCollections();
+          await this.openCollection(this.selectedCol);
+        } else {
+          this.colUpdateError = res.message || "Failed";
+        }
+      } catch (e) { this.colUpdateError = "Network error"; }
+      this.colUpdating = false;
+    },
+
+    promptDeleteCol(name) {
+      this.showDeleteCol = name;
+    },
+
+    async deleteCollection(name) {
+      this.showDeleteCol = null;
+      this.deletingCol = true;
+      try {
+        await api("/collections/" + name, { method: "DELETE" });
+        if (this.selectedCol === name) {
+          this.view = "collections";
+          this.selectedCol = "";
+        }
+        await this.loadCollections();
+      } catch (e) { /* ignore */ }
+      this.deletingCol = false;
     },
 
     promptDelete(id) {
@@ -650,6 +831,24 @@ function dashboard() {
         }
       } catch (e) { this.recError = "Network error"; }
       this.recCreating = false;
+    },
+
+    async updateRecord() {
+      this.recUpdating = true; this.recUpdateError = "";
+      try {
+        const res = await api("/collections/" + this.selectedCol + "/records", {
+          method: "PATCH",
+          body: JSON.stringify({ name: this.selectedCol, data: this.editRec, filter: { id: "=" + this.editRecId } }),
+        });
+        if (res.status === "success") {
+          this.showEditRec = false;
+          this.editRec = {};
+          await this.refreshRecords();
+        } else {
+          this.recUpdateError = res.message || "Failed";
+        }
+      } catch (e) { this.recUpdateError = "Network error"; }
+      this.recUpdating = false;
     },
   };
 }

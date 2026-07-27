@@ -27,6 +27,26 @@ public class CollectionService {
         return collectionRepository.saveCollection(collection);
     }
 
+    public Integer update(CreateCollectionDTO collection) {
+        if (!collectionRepository.collectionExists(collection.name())) {
+            return -100;
+        }
+        collectionRepository.updateTable(collection);
+        collectionRepository.updateCollectionMeta(collection);
+        return 1;
+    }
+
+    public void delete(String name) {
+        if ("users".equals(name) || "superusers".equals(name)) {
+            throw new com.snapbase.exceptions.ResponseException(403, "Cannot delete system collections");
+        }
+        if (!collectionRepository.collectionExists(name)) {
+            throw new com.snapbase.exceptions.ResponseException(404, "Collection not found");
+        }
+        collectionRepository.dropTable(name);
+        collectionRepository.deleteMeta(name);
+    }
+
     public String insertRecord(InsertRecordDTO dto, String userId) {
         return collectionRepository.insertRecord(dto, userId);
     }

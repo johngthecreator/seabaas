@@ -1,6 +1,7 @@
 package com.snapbase.repositories;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.snapbase.dtos.*;
 import com.snapbase.enums.DataTypeEnum;
@@ -39,7 +40,48 @@ public class CollectionRepository {
         String sql = "CREATE TABLE IF NOT EXISTS " + tableName
                 + " ( id TEXT PRIMARY KEY, " + columns
                 + ", created_at TEXT DEFAULT CURRENT_TIMESTAMP, created_by TEXT DEFAULT '' );";
-        jdbi.withHandle(handle -> handle.execute(sql));
+        String indexSql = "CREATE INDEX IF NOT EXISTS " + SqlUtils.validateIdentifier(collection.name()) + "_created_by_idx ON " + tableName + " (created_by);";
+        jdbi.useHandle(handle -> {
+            handle.execute(sql);
+            handle.execute(indexSql);
+        });
+    }
+
+    public void updateTable(CreateCollectionDTO collection){
+        CreateCollectionDTO currSchema = this.jdbi.withHandle(handle -> handle.createQuery("SELECT * FROM collections WHERE name = :name")
+                .bind("name", collection.name())
+                .map((rs, ctx) -> {
+                    try {
+                        return new CreateCollectionDTO(
+                                rs.getString("name"),
+                                new ObjectMapper().readValue(rs.getString("json_schema"), new TypeReference<List<FieldDefinition>>() {}),
+                                rs.getString("read_rule"),
+                                rs.getString("update_rule"));
+                    } catch (JsonProcessingException e) {
+                        throw new RuntimeException(e);
+                    }
+                }).one()
+        );
+
+        var newNamesSet = collection.fields().stream().map(FieldDefinition::name).collect(Collectors.toSet());
+        var oldNamesSet = currSchema.fields().stream().map(FieldDefinition::name).collect(Collectors.toSet());
+
+        this.jdbi.useTransaction(handle -> {
+            for (var newField : collection.fields()){
+                if(!oldNamesSet.contains(newField.name())){
+                    String columnDefSql = buildColumnDef(newField);
+                    String sql = "ALTER TABLE " + SqlUtils.quoteIdentifier(collection.name()) + " ADD COLUMN " + columnDefSql;
+                    handle.execute(sql);
+                }
+            }
+
+            for (var oldField : currSchema.fields()){
+                if(!newNamesSet.contains(oldField.name())){
+                    String sql = "ALTER TABLE " + SqlUtils.quoteIdentifier(collection.name()) + " DROP COLUMN " + SqlUtils.quoteIdentifier(oldField.name());
+                    handle.execute(sql);
+                }
+            }
+        });
     }
 
     public Integer saveCollection(CreateCollectionDTO collection) {
@@ -59,6 +101,36 @@ public class CollectionRepository {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    public void updateCollectionMeta(CreateCollectionDTO collection) {
+        jdbi.useHandle(handle -> {
+            try {
+                handle.createUpdate(
+                        "UPDATE collections SET json_schema = :jsonSchema, read_rule = :readRule, update_rule = :updateRule WHERE name = :name"
+                )
+                        .bind("name", collection.name())
+                        .bind("jsonSchema", new ObjectMapper().writeValueAsString(collection.fields()))
+                        .bind("readRule", collection.readRule())
+                        .bind("updateRule", collection.updateRule())
+                        .execute();
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public void dropTable(String name) {
+        String tableName = SqlUtils.quoteIdentifier(name);
+        jdbi.useHandle(handle -> handle.execute("DROP TABLE IF EXISTS " + tableName));
+    }
+
+    public void deleteMeta(String name) {
+        jdbi.useHandle(handle ->
+            handle.createUpdate("DELETE FROM collections WHERE name = :name")
+                .bind("name", name)
+                .execute()
+        );
     }
 
     public List<CollectionModel> findAllCollections() {
@@ -297,35 +369,8 @@ public class CollectionRepository {
             case DataTypeEnum.NUMBER -> name + " REAL DEFAULT 0.0 " + (field.required() ? "NOT NULL" : "");
             case DataTypeEnum.TEXT -> name + " TEXT DEFAULT '' " + (field.required() ? "NOT NULL" : "");
             case DataTypeEnum.JSON -> name + " TEXT DEFAULT '{}' " + (field.required() ? "NOT NULL" : "");
-            case DataTypeEnum.URL -> name + " TEXT DEFAULT '' " + (field.required() ? "NOT NULL" : "");
-            case DataTypeEnum.EMAIL -> name + " TEXT DEFAULT '' " + (field.required() ? "NOT NULL" : "");
             case DataTypeEnum.DATETIME ->
                     name + " TEXT DEFAULT CURRENT_TIMESTAMP " + (field.required() ? "NOT NULL" : "");
         };
     }
-
-    // ═══ Future ═══
-
-//    public void updateNewCollection(CreateCollectionDTO incommingCollection){
-//        CreateCollectionDTO currSchema = this.jdbi.withHandle(handle -> handle.createQuery("SELECT * FROM collections WHERE name = :name")
-//                .bind("name", incommingCollection.name())
-//                .map((rs, ctx) -> {
-//                    try {
-//                        return new CreateCollectionDTO(
-//                                rs.getString("name"),
-//                                new ObjectMapper().readValue(rs.getString("json_schema"), new TypeReference<List<FieldDefinition>>() {}),
-//                                rs.getString("read_rule"),
-//                                rs.getString("update_rule"));
-//                    } catch (JsonProcessingException e) {
-//                        throw new RuntimeException(e);
-//                    }
-//                }).one()
-//        );
-//
-//        if (incommingCollection.fields().size() > currSchema.fields().size()){
-//
-//
-//        }
-//
-//    }
 }

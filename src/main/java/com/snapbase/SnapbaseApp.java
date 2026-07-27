@@ -99,6 +99,8 @@ public class SnapbaseApp {
                 get("/collections", this.collectionController::listCollections, Role.ADMIN);
                 get("/collections/{name}/schema", this.collectionController::getSchema, Role.ADMIN);
                 post("/collections", this.collectionController::create, Role.ADMIN);
+                patch("/collections", this.collectionController::update, Role.ADMIN);
+                delete("/collections/{name}", this.collectionController::delete, Role.ADMIN);
                 get("/collections/{collection}/records", this.collectionController::findRecords, Role.USER);
                 delete("/collections/{collection}/records", this.collectionController::deleteRecords, Role.USER);
                 patch("/collections/{collection}/records", this.collectionController::updateRecord, Role.USER);
